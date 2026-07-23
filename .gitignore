@@ -1,0 +1,48 @@
+# Build outputs
+**/build/
+**/cmake-build-*/
+**/CMakeFiles/
+**/CMakeCache.txt
+**/Makefile
+**/cmake_install.cmake
+**/CTestTestfile.cmake
+**/compile_commands.json
+**/Testing/
+
+# Compiled artifacts
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dll
+*.dylib
+*.exe
+core
+core.*
+
+# Runtime output
+logs/
+**/logs/
+*.log
+benchmark-results/*
+!benchmark-results/run_protocol_benchmark.sh
+*.sdp
+
+# Local configuration and credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+
+# Unused standalone dependency checkout
+sclient/third_party/glm/
+
+# Editors and operating systems
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
