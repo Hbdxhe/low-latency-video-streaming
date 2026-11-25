@@ -290,6 +290,67 @@ bool TestInvalidAndHelpPaths() {
     return Expect(result.handled && result.show_help && result.success, "expected --help to be recognized");
 }
 
+bool TestJitterSafetyRejectsNonFiniteValues() {
+    const char *values[] = {"nan", "NaN", "nan(1)", "inf", "+inf", "infinity", "-inf"};
+    bool passed = true;
+    for (const char *value : values) {
+        sclient::ClientConfig config;
+        config.udp_jitter_buffer_safety_factor = 1.5;
+        sclient::DecodeBackend decode_backend = sclient::DecodeBackend::kAuto;
+        ArgvStorage args({"cli_options_test", "--udp-jitter-buffer-safety", value});
+        int index = 1;
+        const auto result = sclient::ParseSharedStreamOption(
+                args.argc(), args.data(), &index, &config, &decode_backend);
+        const std::string context = std::string("jitter safety ") + value;
+        if (!Expect(result.handled && !result.success, context + " must be rejected") ||
+            !Expect(result.error_message == "invalid value for --udp-jitter-buffer-safety",
+                    context + " must report invalid value") ||
+            !Expect(config.udp_jitter_buffer_safety_factor == 1.5,
+                    context + " must not replace the existing value")) {
+            passed = false;
+        }
+    }
+    return passed;
+}
+
+bool TestJitterSafetyAcceptsFinitePositiveValues() {
+    struct Case {
+        const char *text;
+        double expected;
+    };
+    const Case cases[] = {{"1.5", 1.5}, {"1e1", 10.0}, {"0.25", 0.25}};
+    for (const auto &item : cases) {
+        sclient::ClientConfig config;
+        sclient::DecodeBackend decode_backend = sclient::DecodeBackend::kAuto;
+        ArgvStorage args({"cli_options_test", "--udp-jitter-buffer-safety", item.text});
+        int index = 1;
+        const auto result = sclient::ParseSharedStreamOption(
+                args.argc(), args.data(), &index, &config, &decode_backend);
+        if (!Expect(result.handled && result.success, "finite positive safety must parse") ||
+            !Expect(config.udp_jitter_buffer_safety_factor == item.expected,
+                    "finite positive safety must retain its value")) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TestJitterSafetyStillRejectsOtherInvalidValues() {
+    const char *values[] = {"0", "-1", "1.2abc", "1e9999"};
+    for (const char *value : values) {
+        sclient::ClientConfig config;
+        sclient::DecodeBackend decode_backend = sclient::DecodeBackend::kAuto;
+        ArgvStorage args({"cli_options_test", "--udp-jitter-buffer-safety", value});
+        int index = 1;
+        const auto result = sclient::ParseSharedStreamOption(
+                args.argc(), args.data(), &index, &config, &decode_backend);
+        if (!Expect(result.handled && !result.success, "invalid safety must still be rejected")) {
+            return false;
+        }
+    }
+    return true;
+}
+
 }  // namespace
 
 int main() {
@@ -303,6 +364,15 @@ int main() {
         return 1;
     }
     if (!TestInvalidAndHelpPaths()) {
+        return 1;
+    }
+    if (!TestJitterSafetyRejectsNonFiniteValues()) {
+        return 1;
+    }
+    if (!TestJitterSafetyAcceptsFinitePositiveValues()) {
+        return 1;
+    }
+    if (!TestJitterSafetyStillRejectsOtherInvalidValues()) {
         return 1;
     }
     return 0;
