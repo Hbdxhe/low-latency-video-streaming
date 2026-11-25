@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
@@ -33,7 +34,8 @@ bool ParseDouble(const char *value, double *result) {
     // errno != 0：转换过程出错，比如溢出。
     // end == value：一个字符都没解析出来。
     // *end != '\0'：后面还有无法解析的垃圾字符，比如 "1.2abc"。
-    if (errno != 0 || end == value || *end != '\0') {
+    // strtod also accepts nan/inf; configuration values must be finite.
+    if (errno != 0 || end == value || *end != '\0' || !std::isfinite(parsed)) {
         return false;
     }
     *result = parsed;
